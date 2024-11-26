@@ -11,13 +11,14 @@ class BroadcastReceiver {
   static int _index = 0;
 
   final int _id;
-  final StreamController<BroadcastMessage> _messages =
-      StreamController<BroadcastMessage>.broadcast();
+  final StreamController<BroadcastMessage> _messages = StreamController<BroadcastMessage>.broadcast();
 
-  /// A list of message names to subscribe to.
+  /// A list of message actions to subscribe to.
   ///
   /// See [BroadcastMessage.name] for more details.
-  final List<String> names;
+  final List<String> actions;
+
+  final List<String> categories;
 
   /// Allow receiver to listen to broadcasts from other apps
   ///
@@ -26,13 +27,14 @@ class BroadcastReceiver {
 
   StreamSubscription? _subscription;
 
-  /// Creates a new [BroadcastReceiver], which subscribes to the given [names].
+  /// Creates a new [BroadcastReceiver], which subscribes to the given [actions].
   ///
   /// At least one name needs to be provided.
   BroadcastReceiver({
-    required this.names,
+    required this.actions,
+    required this.categories,
     this.listenToBroadcastsFromOtherApps = true,
-  })  : assert(names.length > 0),
+  })  : assert(actions.length > 0),
         _id = ++_index;
 
   /// Returns true, if this [BroadcastReceiver] is currently listening for messages.
@@ -69,7 +71,8 @@ class BroadcastReceiver {
 
   Map<String, dynamic> toMap() => <String, dynamic>{
         'id': _id,
-        'names': names,
+        'actions': actions,
+        'categories': categories,
         'listenToBroadcastsFromOtherApps': listenToBroadcastsFromOtherApps,
       };
 
@@ -80,20 +83,16 @@ class BroadcastReceiver {
 
   @override
   int get hashCode =>
-      _id.hashCode ^
-      names.hashCode ^
-      listenToBroadcastsFromOtherApps.hashCode ^
-      _subscription.hashCode ^
-      _messages.hashCode;
+      _id.hashCode ^ actions.hashCode ^ categories.hashCode ^ listenToBroadcastsFromOtherApps.hashCode ^ _subscription.hashCode ^ _messages.hashCode;
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         other is BroadcastReceiver &&
             other._id == _id &&
-            other.names == names &&
-            other.listenToBroadcastsFromOtherApps ==
-                listenToBroadcastsFromOtherApps &&
+            other.actions == actions &&
+            other.categories == categories &&
+            other.listenToBroadcastsFromOtherApps == listenToBroadcastsFromOtherApps &&
             other._messages == _messages &&
             other._subscription == _subscription;
   }
