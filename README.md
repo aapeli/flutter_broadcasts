@@ -6,15 +6,40 @@ A plugin for sending and receiving broadcasts with Android intents and iOS notif
 
 ## Quick Start
 
-First install the package via [pub.dev](https://pub.dev/packages/flutter_broadcasts/install). Then subscribe to broadcasts like this:
+This fork is not published on pub.dev. Add it as a git dependency:
+
+```yaml
+dependencies:
+  flutter_broadcasts:
+    git:
+      url: https://github.com/aapeli/flutter_broadcasts.git
+      ref: main
+```
+
+Then subscribe to broadcasts like this:
 
 ```dart
 BroadcastReceiver receiver = BroadcastReceiver(
-  names: <String>["de.kevlatus.broadcast"],
+  actions: <String>["de.kevlatus.broadcast"],
+  // Optional: categories the broadcasts must belong to.
+  categories: <String>[],
+  // Android 13+: set to false to only receive this app's own broadcasts.
+  listenToBroadcastsFromOtherApps: true,
 );
 receiver.messages.listen(print);
 receiver.start();
 ```
+
+Send one with:
+
+```dart
+await sendBroadcast(BroadcastMessage(name: "de.kevlatus.broadcast"));
+```
+
+## Requirements
+
+Android builds need Flutter 3.27 or newer and a Kotlin Gradle plugin 2.0 or
+newer in the app. The plugin builds with Gradle 9 / AGP 9 (Flutter 3.50).
 
 ## Roadmap
 

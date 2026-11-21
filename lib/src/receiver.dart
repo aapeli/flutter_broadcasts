@@ -18,6 +18,10 @@ class BroadcastReceiver {
   /// See [BroadcastMessage.name] for more details.
   final List<String> actions;
 
+  /// A list of categories the messages must belong to. May be empty.
+  ///
+  /// On Android, these are added to the receiver's filter with
+  /// [IntentFilter.addCategory](https://developer.android.com/reference/android/content/IntentFilter#addCategory(java.lang.String)).
   final List<String> categories;
 
   /// Allow receiver to listen to broadcasts from other apps
@@ -29,12 +33,12 @@ class BroadcastReceiver {
 
   /// Creates a new [BroadcastReceiver], which subscribes to the given [actions].
   ///
-  /// At least one name needs to be provided.
+  /// At least one action needs to be provided.
   BroadcastReceiver({
     required this.actions,
-    required this.categories,
+    this.categories = const <String>[],
     this.listenToBroadcastsFromOtherApps = true,
-  })  : assert(actions.length > 0),
+  })  : assert(actions.isNotEmpty),
         _id = ++_index;
 
   /// Returns true, if this [BroadcastReceiver] is currently listening for messages.

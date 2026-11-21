@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
-import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -35,18 +34,17 @@ class CustomBroadcastReceiver(
 
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.d(TAG, "received intent " + intent?.action)
-        intent?.let {
-            val bundle = it.extras
-            val dataPairs = bundle?.keySet()?.map { key ->
-                Pair(key, bundle.get(key))
-            }
-            val data = dataPairs?.toMap() ?: mapOf()
-            listener(mapOf(
-                    "receiverId" to id,
-                    "name" to it.action!!,
-                    "data" to normalize(data)
-            ))
-        }
+        val action = intent?.action ?: return
+        val bundle = intent.extras
+        // Bundle.get is deprecated, but the extras are of arbitrary, unknown
+        // types here, which the typed getters cannot read.
+        @Suppress("DEPRECATION")
+        val data = bundle?.keySet()?.associateWith { key -> bundle.get(key) } ?: mapOf()
+        listener(mapOf(
+                "receiverId" to id,
+                "name" to action,
+                "data" to normalize(data)
+        ))
     }
 
     fun start(context: Context) {
@@ -65,7 +63,13 @@ class CustomBroadcastReceiver(
     }
 
     fun stop(context: Context) {
-        context.unregisterReceiver(this)
+        try {
+            context.unregisterReceiver(this)
+        } catch (e: IllegalArgumentException) {
+            // Not registered (any more); nothing to stop.
+            Log.w(TAG, "receiver $id was not registered", e)
+            return
+        }
         Log.d(TAG, "stopped listening for broadcasts: " + actions.joinToString(";"))
     }
 }
@@ -79,20 +83,22 @@ class BroadcastManager(private val applicationContext: Context) {
 
     fun startReceiver(receiver: CustomBroadcastReceiver) {
         Log.d(TAG, "starting receiver " + receiver.id.toString())
-        // TODO: handle case when receiver exists
+        // A receiver that is started again replaces its earlier registration
+        // instead of leaking it.
+        receivers[receiver.id]?.stop(applicationContext)
         receiver.start(applicationContext)
         receivers = receivers + Pair(receiver.id, receiver)
     }
 
     fun stopReceiver(id: Int) {
         Log.d(TAG, "stopping receiver $id")
-        // TODO: handle non-existing case
         receivers[id]?.stop(applicationContext)
         receivers = receivers.filter { it.key != id }
     }
 
     fun stopAll() {
         receivers.forEach { it.value.stop(applicationContext) }
+        receivers = mapOf()
     }
 }
 
@@ -147,10 +153,11 @@ class MethodCallHandlerImpl(
     }
 
     private fun onStopReceiver(call: MethodCall, result: Result) {
-        withReceiverArgs(call, result) { id, _, _, _ ->
-            broadcastManager.stopReceiver(id)
-            result.success(null)
-        }
+        // Only the id identifies the receiver to stop.
+        val id = call.argument<Int>("id")
+                ?: return result.error("1", "no receiver id provided", null)
+        broadcastManager.stopReceiver(id)
+        result.success(null)
     }
 
     private fun onSendBroadcast(call: MethodCall, result: Result) {
@@ -163,6 +170,7 @@ class MethodCallHandlerImpl(
                 context.sendBroadcast(intent)
                 Log.d(TAG, "sent broadcast: $name")
             }
+            result.success(null)
         }
     }
 
@@ -177,6 +185,9 @@ class MethodCallHandlerImpl(
             }
             "sendBroadcast" -> {
                 onSendBroadcast(call, result)
+            }
+            else -> {
+                result.notImplemented()
             }
         }
     }
@@ -210,7 +221,7 @@ class FlutterBroadcastsPlugin : FlutterPlugin {
     private var methodCallHandler: MethodCallHandlerImpl? = null
     private var broadcastManager: BroadcastManager? = null
 
-    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         broadcastManager = BroadcastManager(flutterPluginBinding.applicationContext)
         methodCallHandler = MethodCallHandlerImpl(
                 flutterPluginBinding.applicationContext,
@@ -219,7 +230,7 @@ class FlutterBroadcastsPlugin : FlutterPlugin {
         methodCallHandler!!.startListening(flutterPluginBinding.binaryMessenger)
     }
 
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         if (methodCallHandler == null) {
             Log.wtf(TAG, "Already detached from engine.")
             return
@@ -228,7 +239,7 @@ class FlutterBroadcastsPlugin : FlutterPlugin {
         methodCallHandler = null
         broadcastManager?.stopAll()
         broadcastManager = null
-    }    
+    }
 }
 
 /***

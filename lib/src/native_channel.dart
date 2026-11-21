@@ -38,7 +38,7 @@ Stream<BroadcastMessage> _listenForBroadcasts(MethodChannel channel) {
 /// the appropriate [BroadcastReceiver].
 class _BroadcastChannel {
   static const MethodChannel _channel =
-      const MethodChannel('de.kevlatus.flutter_broadcasts');
+      MethodChannel('de.kevlatus.flutter_broadcasts');
   static _BroadcastChannel instance = _BroadcastChannel();
 
   /// A permanent stream of [BroadcastMessage]s from the native platform.

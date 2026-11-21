@@ -1,28 +1,32 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_broadcasts/flutter_broadcasts.dart';
+import 'package:material_ui/material_ui.dart';
 
-void main() async {
+const String demoAction = "de.kevlatus.flutter_broadcasts_example.demo_action";
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  BroadcastReceiver receiver = BroadcastReceiver(
-    names: <String>[
-      "de.kevlatus.flutter_broadcasts_example.demo_action",
-    ],
+  // The demo only sends the broadcast to itself, so the receiver does not
+  // need to be exported to other apps.
+  final BroadcastReceiver receiver = BroadcastReceiver(
+    actions: <String>[demoAction],
+    listenToBroadcastsFromOtherApps: false,
   );
 
   @override
   void initState() {
     super.initState();
     receiver.start();
-    receiver.messages.listen(print);
   }
 
   @override
@@ -35,36 +39,19 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Broadcasts Demo'),
-        ),
+        appBar: AppBar(title: const Text('Broadcasts Demo')),
         body: Column(
           children: [
             TextButton(
-              child: Text('Send Broadcast'),
+              child: const Text('Send Broadcast'),
               onPressed: () {
-                sendBroadcast(
-                  BroadcastMessage(
-                    name: "de.kevlatus.flutter_broadcasts_example.demo_action",
-                  ),
-                );
+                sendBroadcast(BroadcastMessage(name: demoAction));
               },
             ),
             StreamBuilder<BroadcastMessage>(
-              initialData: null,
               stream: receiver.messages,
               builder: (context, snapshot) {
-                print(snapshot.data);
-                switch (snapshot.connectionState) {
-                  case ConnectionState.active:
-                    return Text(snapshot.data?.name ?? '');
-
-                  case ConnectionState.none:
-                  case ConnectionState.done:
-                  case ConnectionState.waiting:
-                  default:
-                    return SizedBox();
-                }
+                return Text(snapshot.data?.name ?? '');
               },
             ),
           ],

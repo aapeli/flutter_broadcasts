@@ -1,27 +1,36 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility that Flutter provides. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
+import 'package:flutter/services.dart';
 import 'package:flutter_broadcasts_example/main.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
-  testWidgets('Verify Platform version', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+  const MethodChannel channel = MethodChannel('de.kevlatus.flutter_broadcasts');
 
-    // Verify that platform version is retrieved.
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is Text && (widget.data?.startsWith('Running on:') ?? false),
+  testWidgets('sends the demo broadcast when the button is tapped', (
+    WidgetTester tester,
+  ) async {
+    final calls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      MethodCall call,
+    ) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
       ),
-      findsOneWidget,
     );
+
+    await tester.pumpWidget(const MyApp());
+    await tester.pump();
+    expect(calls.map((c) => c.method), contains('startReceiver'));
+
+    await tester.tap(find.byType(TextButton));
+    await tester.pump();
+
+    final sent = calls.where((c) => c.method == 'sendBroadcast').single;
+    expect(sent.arguments['name'], demoAction);
   });
 }
